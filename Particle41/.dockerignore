@@ -1,0 +1,10 @@
+$Recycle.Bin
+System Volume Information
+Thumbs.db
+.DS_Store
+*.pyc
+__pycache__/
+.vscode/
+node_modules/
+.env
+
