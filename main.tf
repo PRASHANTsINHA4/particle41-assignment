@@ -92,7 +92,14 @@ resource "aws_eip" "nat_eip" {
 resource "aws_nat_gateway" "nat_gw" {
   allocation_id = aws_eip.nat_eip.id
   subnet_id     = aws_subnet.public_subnet_1_new.id
+
+  depends_on = [aws_internet_gateway.igw]  
+
+  tags = {
+    Name = "simpletimes-nat"
+  }
 }
+
 
 resource "aws_route_table" "private_rt" {
   vpc_id = aws_vpc.vpc_new.id
@@ -116,7 +123,7 @@ resource "aws_route_table_association" "private_subnet_2_assoc" {
 
 # IAM Role for EKS Cluster
 resource "aws_iam_role" "eks_role" {
-  name = "eks-cluster-role"
+  name = "eks-cluster_role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -153,7 +160,7 @@ resource "aws_eks_cluster" "eks_new" {
 
 # IAM Role for EKS Node Group
 resource "aws_iam_role" "node_role" {
-  name = "eks-node-role"
+  name = "eks-node_role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -247,4 +254,23 @@ resource "kubernetes_service" "app_service_new" {
     }
     type = "LoadBalancer"
   }
+}
+resource "null_resource" "update_kubeconfig" {
+  depends_on = [time_sleep.wait_for_eks]
+
+  triggers = {
+    cluster_name      = aws_eks_cluster.eks_new.name
+    cluster_endpoint  = aws_eks_cluster.eks_new.endpoint
+    cluster_ca        = aws_eks_cluster.eks_new.certificate_authority[0].data
+  }
+
+  provisioner "local-exec" {
+    command = "aws eks update-kubeconfig --name ${aws_eks_cluster.eks_new.name} --region us-east-2"
+  }
+}
+
+resource "time_sleep" "wait_for_eks" {
+  depends_on = [aws_eks_cluster.eks_new]
+
+  create_duration = "120s" 
 }
